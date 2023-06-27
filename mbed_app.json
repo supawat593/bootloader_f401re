@@ -1,0 +1,30 @@
+{
+    "config": {
+    "update_file": {
+            "help": "Path to the application update binary on the SD card",
+            "value": "\"upsmon_f401_update.bin\""
+        }
+    },
+    "target_overrides":{
+        "*":{
+            "rtos.main-thread-stack-size":"0x0800",
+            "platform.stdio-baud-rate": 115200,
+            "platform.callback-nontrivial": true,
+            "platform.stdio-convert-newlines":true,
+            "target.tickless-from-us-ticker":false,
+            "target.printf_lib":"std",
+            "target.device_has_add":["USBDEVICE"],
+            "target.features_add":["STORAGE"],
+            "target.components_add":["SPIF","FLASHIAP"]
+        },
+        "NUCLEO_F401RE":{        
+            "target.bootloader_supported":true,
+            "target.restrict_size": "0x20000",
+            "spif-driver.SPI_FREQ":"32000000",
+            "spif-driver.SPI_MOSI":"PB_5",
+            "spif-driver.SPI_MISO":"PB_4",
+            "spif-driver.SPI_CLK":"PB_3",
+            "spif-driver.SPI_CS":"PB_10"
+        }
+    }
+}
