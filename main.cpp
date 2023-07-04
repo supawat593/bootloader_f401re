@@ -1,3 +1,4 @@
+#include "./TimerTPL5010/TimerTPL5010.h"
 #include "FATFileSystem.h"
 #include "FlashIAP.h"
 #include "SPIFBlockDevice.h"
@@ -13,10 +14,10 @@
 
 #define BLINKING_RATE 500ms
 
-
 DigitalOut led(LED1);
 DigitalIn usb_det(BUTTON1);
-
+BusIn dipsw(PB_1, PB_0, PC_5, PC_4);
+TimerTPL5010 tpl5010(PA_0, PA_1);
 
 FATFileSystem fs(SPIF_MOUNT_PATH);
 SPIFBlockDevice bd(MBED_CONF_SPIF_DRIVER_SPI_MOSI,
@@ -29,9 +30,7 @@ Thread usb_spif_msd_thread;
 Thread isr_thread(osPriorityAboveNormal, 0x400, nullptr, "isr_queue_thread");
 EventQueue isr_queue;
 
-// volatile bool isWake = false;
-
-// void fall_wake() { isWake = true; }
+uint8_t read_dipsw() { return (~dipsw.read()) & 0x0f; }
 
 void USB_SPIF_MSD(SPIFBlockDevice *spif_bd) {
   USBMSD usb(spif_bd);
@@ -63,7 +62,6 @@ void init_fs() {
     }
   }
 }
-
 
 void apply_update(FILE *file, uint32_t address) {
   fseek(file, 0, SEEK_END);
@@ -121,32 +119,23 @@ void apply_update(FILE *file, uint32_t address) {
 
 int main() {
 
-  if (!usb_det.read()) {
+  if (usb_det.read() && (read_dipsw() == 0)) {
 
-    // pdone = 1;
     printf("\r\n--------------------\r\n");
     printf("| Hello UPSMON MSD |\r\n");
     printf("--------------------\r\n");
-    // pdone = 0;
 
     init_fs();
     usb_spif_msd_thread.start(callback(USB_SPIF_MSD, &bd));
-    // pwake.fall(&fall_wake);
 
     isr_thread.start(callback(&isr_queue, &EventQueue::dispatch_forever));
-    // tpl5010.init(&isr_queue);
+    tpl5010.init(&isr_queue);
 
     while (true) {
 
-      //   if (isWake) {
-      //     pdone = 1;
-      //     isWake = false;
-      //     pdone = 0;
-      //   }
-
-    //   if (tpl5010.get_wdt()) {
-    //     tpl5010.set_wdt(false);
-    //   }
+      if (tpl5010.get_wdt()) {
+        tpl5010.set_wdt(false);
+      }
 
       led = !led;
       ThisThread::sleep_for(BLINKING_RATE);
